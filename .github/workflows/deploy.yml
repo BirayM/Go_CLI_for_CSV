@@ -3,7 +3,7 @@ name: Build and Deploy to Cloud Run
 on:
   push:
     branches:
-      - main  # Se déclenche à chaque push sur la branche main
+      - master  # Se déclenche à chaque push sur la branche main
 
 env:
   PROJECT_ID: 'agentic-ai-learning-486e'               # Ex: mon-projet-123
