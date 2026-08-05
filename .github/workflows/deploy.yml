@@ -10,7 +10,7 @@ env:
   PROJECT_NUMBER: '80844171008'         # Ex: 123456789012
   REGION: 'europe-west1'                     # Région GCP de deployment
   REPOSITORY: 'GO_CLI_for_CSV'          # Nom du registre créé à l'étape 2
-  SERVICE: 'mon-service-cloud-run'           # Nom du service Cloud Run
+  SERVICE: 'service-cloud-run-with-GHA'           # Nom du service Cloud Run
   WORKLOAD_POOL: 'github-pool-bi'            # Nom du pool créé à l'étape 1
   WORKLOAD_PROVIDER: 'github-provider-bi'    # Nom du provider créé à l'étape 1
   SERVICE_ACCOUNT: 'github-actions-BI'       # Nom du SA créé à l'étape 1
