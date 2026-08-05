@@ -1,50 +1,36 @@
 package main
 
 import (
-	"encoding/csv"
 	"fmt"
+	"log"
+	"net/http"
 	"os"
 )
 
-// readCSV ouvre et lit un fichier CSV, puis renvoie son contenu sous forme [][]string.
-func readCSV(filePath string) ([][]string, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("impossible d'ouvrir le fichier : %w", err)
-	}
-	// On s'assure que le fichier sera fermé à la fin de la fonction
-	defer file.Close()
-
-	reader := csv.NewReader(file)
-	
-	// ReadAll lit l'intégralité du fichier CSV en une seule fois
-	records, err := reader.ReadAll()
-	if err != nil {
-		return nil, fmt.Errorf("erreur lors de la lecture du CSV : %w", err)
-	}
-
-	return records, nil
-}
-
 func main() {
-	// Fichier de test temporaire
-	filename := "data.csv"
-
-	fmt.Println("Lecture du fichier...", filename)
-	data, err := readCSV(filename)
-	if err != nil {
-		fmt.Printf("Erreur : %v\n", err)
-		return
+	// 1. Récupération du port injecté par Cloud Run (défaut à 8080 en local)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
 	}
 
-	fmt.Printf("Succès ! %d lignes lues (en-tête compris).\n\n", len(data))
+	// 2. Définition d'une route HTTP basique
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Service CSV Tool en ligne !")
+	})
 
-	// Affichage des premières lignes pour vérifier
-	for i, row := range data {
-		if i > 5 { // On limite l'affichage aux 5 premières lignes
-			fmt.Println("...")
-			break
-		}
-		fmt.Println(row)
+	// Optionnel : Route pour exécuter votre traitement CSV via HTTP
+	http.HandleFunc("/run", func(w http.ResponseWriter, r *http.Request) {
+		// Placez ici la logique de traitement de votre fichier CSV
+		log.Println("Exécution du traitement CSV...")
+		fmt.Fprintf(w, "Traitement CSV effectué avec succès.")
+	})
+
+	// 3. Démarrage du serveur HTTP sur ":PORT" (binding sur 0.0.0.0)
+	addr := ":" + port
+	log.Printf("Serveur en écoute sur %s...", addr)
+	
+	if err := http.ListenAndServe(addr, nil); err != nil {
+		log.Fatalf("Échec du démarrage du serveur : %v", err)
 	}
 }

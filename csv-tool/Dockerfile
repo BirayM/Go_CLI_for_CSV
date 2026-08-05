@@ -1,30 +1,27 @@
-# --- Stage 1 : Compilation ---
-FROM golang:1.22-alpine AS builder
+# Stage 1 : Compilation
+FROM golang:1.25.11-alpine AS builder
 
-WORKDIR /app
+WORKDIR /src
 
-# Copier les fichiers de dépendances et télécharger
+# Copie et téléchargement des dépendances
 COPY go.mod ./
-# Si vous avez un go.sum, décommentez la ligne suivante :
-# COPY go.sum ./
+# COPY go.sum ./  # Décommentez si vous utilisez go.sum
 RUN go mod download
 
-# Copier le reste du code source et compiler le binaire
+# Copie du code source et compilation du binaire Linux
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o /csv-tool main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/csv-tool main.go
 
-# --- Stage 2 : Image finale d'exécution ---
+# Stage 2 : Image d'exécution minimale
 FROM alpine:3.19
 
 WORKDIR /root/
 
-# Copier le binaire compilé depuis l'étape précédente
-COPY --from=builder /csv-tool .
-# Copier le fichier CSV si votre binaire en a besoin localement
-COPY --from=builder /app/data.csv .
+# Copie du binaire depuis le stage builder
+COPY --from=builder /app/csv-tool .
+# Copie du fichier data.csv si le binaire en a besoin
+COPY --from=builder /src/data.csv .
 
-# Exposer le port par défaut attendu par Cloud Run
-ENV PORT=8080
 EXPOSE 8080
 
 CMD ["./csv-tool"]
