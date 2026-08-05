@@ -1,0 +1,60 @@
+name: Build and Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main  # Se déclenche à chaque push sur la branche main
+
+env:
+  PROJECT_ID: 'agentic-ai-learning-486e'               # Ex: mon-projet-123
+  PROJECT_NUMBER: '80844171008'         # Ex: 123456789012
+  REGION: 'europe-west1'                     # Région GCP de deployment
+  REPOSITORY: 'GO_CLI_for_CSV'          # Nom du registre créé à l'étape 2
+  SERVICE: 'mon-service-cloud-run'           # Nom du service Cloud Run
+  WORKLOAD_POOL: 'github-pool-bi'            # Nom du pool créé à l'étape 1
+  WORKLOAD_PROVIDER: 'github-provider-bi'    # Nom du provider créé à l'étape 1
+  SERVICE_ACCOUNT: 'github-actions-BI'       # Nom du SA créé à l'étape 1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    # PERMISSIONS CRITIQUES : Requis pour la génération du jeton OIDC WIF
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+    # 1. Récupérer le code source
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # 2. Authentification auprès de GCP via Workload Identity Federation
+    - id: auth
+      name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        workload_identity_provider: 'projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/${{ env.WORKLOAD_POOL }}/providers/${{ env.WORKLOAD_PROVIDER }}'
+        service_account: '${{ env.SERVICE_ACCOUNT }}@${{ env.PROJECT_ID }}.iam.gserviceaccount.com'
+
+    # 3. Configurer l'accès de Docker à Artifact Registry
+    - name: Set up Docker Auth
+      run: |-
+        gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+    # 4. Construire et pousser l'image Docker vers Artifact Registry
+    - name: Build and Push Docker Image
+      run: |-
+        IMAGE_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE }}:${{ github.sha }}"
+        docker build -t $IMAGE_TAG ./csv-tool
+        docker push $IMAGE_TAG
+
+    # 5. Déployer l'image sur Google Cloud Run
+    - name: Deploy to Cloud Run
+      uses: google-github-actions/deploy-cloudrun@v2
+      with:
+        service: ${{ env.SERVICE }}
+        region: ${{ env.REGION }}
+        image: '${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE }}:${{ github.sha }}'
+        # Permet un accès public (optionnel, supprimez la ligne ci-dessous si le service doit rester privé)
+        flags: '--allow-unauthenticated'
